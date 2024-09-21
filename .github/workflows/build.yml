@@ -1,0 +1,49 @@
+name: Publish Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - main
+
+env:
+  DOCKER_HUB_NAMESPACE: whicha
+  DOCKER_HUB_REPOSITORY: ubuntu2204
+
+jobs:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{github.ref_name}}
+
+      - name: Get current date 
+        id: build_date
+        run: |
+          echo "build_date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_HUB_NAMESPACE}}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-${{ steps.build_date.outputs.build_date }}
+            ${{ env.DOCKER_HUB_NAMESPACE }}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-latest
