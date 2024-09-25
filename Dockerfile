@@ -123,13 +123,7 @@ RUN git config --global http.sslVerify false \
 
 # zoxide installation
 RUN curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
-    
-# clone config files
-RUN git config --global http.sslVerify false \
-    && git config --global http.postBuffer 1048576000 \
-    && git config --global core.compression 0 \
-    && git clone https://github.com/whicha/config.git \
-    && cp -r config/ubuntu2204-live-server/. . \
-    && rm -rf config
+
+COPY --chown=$USER_UID:$USER_GID . .
 
 CMD ["/usr/bin/zsh"]

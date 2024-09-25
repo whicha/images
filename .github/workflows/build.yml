@@ -1,10 +1,8 @@
-name: Publish Docker image
+name: base-image-build
 
 on:
   workflow_dispatch:
   push:
-    branches-ignore:
-      - main
 
 env:
   DOCKER_HUB_NAMESPACE: whicha
@@ -20,14 +18,22 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out to target branch
+        uses: actions/checkout@v4
         with:
           ref: ${{github.ref_name}}
 
-      - name: Get current date 
-        id: build_date
+      - name: Get current time
+        id: build_time
         run: |
-          echo "build_date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+          echo "build_time=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Define some variables
+        id: variables
+        run: |
+          echo "time_tag=${{ env.DOCKER_HUB_NAMESPACE }}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-${{ steps.build_time.outputs.build_time }}" >> $GITHUB_OUTPUT
+          echo "latest_tag=${{ env.DOCKER_HUB_NAMESPACE }}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-latest" >> $GITHUB_OUTPUT
+          echo "tarball_name=${{ env.DOCKER_HUB_REPOSITORY }}-${{github.ref_name}}-${{ steps.build_time.outputs.build_time }}.tar" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,9 +47,27 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./context
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.DOCKER_HUB_NAMESPACE}}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-${{ steps.build_date.outputs.build_date }}
-            ${{ env.DOCKER_HUB_NAMESPACE }}/${{ env.DOCKER_HUB_REPOSITORY }}:${{github.ref_name}}-latest
+            ${{ steps.variables.outputs.time_tag }}
+            ${{ steps.variables.outputs.latest_tag }}
+            
+
+      - name: Pull, pack and compress image files
+        run: |
+          docker pull ${{ steps.variables.outputs.time_tag }}
+          docker save -o ${{ steps.variables.outputs.tarball_name }} ${{ steps.variables.outputs.time_tag }}
+          tar -czf ${{ steps.variables.outputs.tarball_name }}.gz ${{ steps.variables.outputs.tarball_name }}
+          docker rmi ${{ steps.variables.outputs.time_tag }}
+          rm ${{ steps.variables.outputs.tarball_name }}
+
+      - name: Release the latest image
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ steps.variables.outputs.time_tag }}
+          files: |
+            ${{ steps.variables.outputs.tarball_name }}.gz
+          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
