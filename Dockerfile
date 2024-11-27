@@ -108,6 +108,7 @@ USER root
 
 RUN apt-get update && apt-get install -y \
     zsh \
+    && chsh -s $(which zsh) $USERNAME \
     && rm -rf /var/lib/apt/lists/* 
 
 USER $USERNAME
@@ -126,4 +127,4 @@ RUN curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install
 
 COPY --chown=$USER_UID:$USER_GID . .
 
-CMD ["/usr/bin/zsh"]
+CMD ["whoami"]
