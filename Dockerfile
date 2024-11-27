@@ -127,4 +127,4 @@ RUN curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install
 
 COPY --chown=$USER_UID:$USER_GID . .
 
-CMD ["whoami"]
+CMD ["$(which zsh)"]
