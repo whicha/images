@@ -125,6 +125,18 @@ RUN git config --global http.sslVerify false \
 # zoxide installation
 RUN curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
 
+# neovim installation
+RUN sudo apt-get update \
+    && sudo apt-get install -y \
+    ninja-build gettext cmake unzip curl build-essential \ 
+    && git clone https://github.com/neovim/neovim \
+    && cd neovim \
+    && git checkout stable \
+    && make CMAKE_BUILD_TYPE=RelWithDebInfo && sudo make install \
+    && cd .. \
+    && rm -rf neovim \
+    && sudo rm -rf /var/lib/apt/lists/*
+
 COPY --chown=$USER_UID:$USER_GID . .
 
 CMD ["zsh"]
